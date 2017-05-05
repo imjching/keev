@@ -1,0 +1,26 @@
+// protoc -I kvs/ kvs/kvs.proto --go_out=plugins=grpc:kvs
+syntax = "proto3";
+package kvs;
+
+service KVS {
+  rpc StoreItem(StoreRequest) returns (StoreResponse) {}
+  rpc LoadItem(LoadRequest) returns (LoadResponse) {}
+}
+
+message StoreRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message StoreResponse {
+  bool success = 1;
+}
+
+message LoadRequest{
+  string key = 1;
+}
+
+message LoadResponse {
+  string key = 1;
+  string value = 2;
+}
