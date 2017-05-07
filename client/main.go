@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/carmark/pseudo-terminal-go/terminal"
-	pb "github.com/imjching/hashdb/protobuf"
+	pb "github.com/imjching/keev/protobuf"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -80,7 +80,7 @@ func main() {
 	}
 	defer term.ReleaseFromStdInOut() // defer this
 
-	fmt.Println("hashdb (1.0)")
+	fmt.Println("keev (1.0)")
 	fmt.Println("Type \"help\" for help.")
 	fmt.Println()
 

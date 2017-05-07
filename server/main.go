@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/imjching/hashdb/auth"
-	pb "github.com/imjching/hashdb/protobuf"
+	"github.com/imjching/keev/auth"
+	pb "github.com/imjching/keev/protobuf"
 	"github.com/orcaman/concurrent-map"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

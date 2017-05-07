@@ -1,4 +1,4 @@
-## HashDB
+## keev
 
 Work-in-progress.
 A simple key-value store backed by hash tables
