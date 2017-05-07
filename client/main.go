@@ -97,8 +97,6 @@ func main() {
 			continue
 		}
 
-		// term.Write([]byte(line + "\r\n"))
-
 		command := strings.Fields(line)
 		if len(command) == 0 {
 			fmt.Println("invalid!")
