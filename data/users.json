@@ -1,0 +1,12 @@
+[
+  {
+    "username": "admin",
+    "password": "admin123",
+    "perms": ["USE", "GET", "PUT", "DELETE"]
+  },
+  {
+    "username": "user",
+    "password": "user123",
+    "perms": ["USE", "GET"]
+  }
+]

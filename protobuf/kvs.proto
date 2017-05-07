@@ -1,6 +1,6 @@
-// protoc -I kvs/ kvs/kvs.proto --go_out=plugins=grpc:kvs
+// protoc -I protobuf/ protobuf/kvs.proto --go_out=plugins=grpc:protobuf
 syntax = "proto3";
-package kvs;
+package protobuf;
 
 service KVS {
   rpc StoreItem(StoreRequest) returns (StoreResponse) {}

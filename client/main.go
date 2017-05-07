@@ -1,24 +1,29 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"log"
-	"os"
-	"runtime"
 	"strings"
 
-	"github.com/imjching/go-kvs/kvs"
+	"github.com/carmark/pseudo-terminal-go/terminal"
+	pb "github.com/imjching/hashdb/protobuf"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
 	address = "localhost:1234"
 )
 
-func storeItem(client kvs.KVSClient, in *kvs.StoreRequest) {
-	resp, err := client.StoreItem(context.Background(), in)
+func storeItem(client pb.KVSClient, in *pb.StoreRequest) {
+
+	md := metadata.Pairs("authorization", "Bearer XXXX")
+	ctx := metadata.NewContext(context.Background(), md)
+
+	resp, err := client.StoreItem(ctx, in)
 	if err != nil {
 		log.Fatalf("Could not store item: %v", err)
 	}
@@ -27,7 +32,7 @@ func storeItem(client kvs.KVSClient, in *kvs.StoreRequest) {
 	}
 }
 
-func loadItem(client kvs.KVSClient, in *kvs.LoadRequest) {
+func loadItem(client pb.KVSClient, in *pb.LoadRequest) {
 	resp, err := client.LoadItem(context.Background(), in)
 	if err != nil {
 		log.Printf("Could not load item: %v", err)
@@ -36,51 +41,98 @@ func loadItem(client kvs.KVSClient, in *kvs.LoadRequest) {
 	log.Printf("A new item has been loaded! %s:%s", resp.Key, resp.Value)
 }
 
+type loginCreds struct {
+	Username, Password string
+}
+
+func (c *loginCreds) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{
+		"username": c.Username,
+		"password": c.Password,
+	}, nil
+}
+
+func (c *loginCreds) RequireTransportSecurity() bool {
+	return true
+}
+
 func main() {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+
+	creds, err := credentials.NewClientTLSFromFile("keys/cert.pem", "localhost")
+	if err != nil {
+		log.Fatalf("Failed to create TLS credentials %v", err)
+	}
+
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(creds), grpc.WithPerRPCCredentials(&loginCreds{
+		Username: "admin",
+		Password: "admin123",
+	}))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 	defer conn.Close()
 
-	client := kvs.NewKVSClient(conn)
+	client := pb.NewKVSClient(conn)
 
-	fmt.Println("go-kvs 1.0")
-	fmt.Printf("[%s %s/%s]\n", runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	fmt.Println("Type \"help\" for more information.")
+	term, err := terminal.NewWithStdInOut()
+	if err != nil {
+		panic(err)
+	}
+	defer term.ReleaseFromStdInOut() // defer this
 
-	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("hashdb (1.0)")
+	fmt.Println("Type \"help\" for help.")
+	fmt.Println()
 
+	term.SetPrompt("imjching > ")
+	line, err := term.ReadLine()
 	for {
-		fmt.Print(">>> ")
-		scanner.Scan()
-		command := strings.Fields(scanner.Text())
-		if len(command) == 0 {
-			fmt.Println("invalid!")
+		if err == io.EOF {
+			term.Write([]byte(line))
+			fmt.Println()
+			return
+		}
+		if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
+			line, err = term.ReadLine()
 			continue
 		}
-		switch command[0] {
-		case "put":
-			if len(command) != 3 {
-				fmt.Println("Invalid input: put <key> <value>")
-				continue
+
+		// term.Write([]byte(line + "\r\n"))
+
+		command := strings.Fields(line)
+		if len(command) == 0 {
+			fmt.Println("invalid!")
+		} else {
+			switch command[0] {
+			case ".exit":
+				return
+			case "put":
+				if len(command) != 3 {
+					fmt.Println("Invalid input: put <key> <value>")
+				} else {
+					sr := &pb.StoreRequest{
+						Key:   command[1],
+						Value: command[2],
+					}
+					storeItem(client, sr)
+				}
+			case "get":
+				if len(command) != 2 {
+					fmt.Println("Invalid input: get <key>")
+				} else {
+					lr := &pb.LoadRequest{
+						Key: command[1],
+					}
+					loadItem(client, lr)
+				}
+				term.SetPrompt("imjching@namespace > ")
+			default:
+				fmt.Println("Invalid input!")
 			}
-			sr := &kvs.StoreRequest{
-				Key:   command[1],
-				Value: command[2],
-			}
-			storeItem(client, sr)
-		case "get":
-			if len(command) != 2 {
-				fmt.Println("Invalid input: get <key>")
-				continue
-			}
-			lr := &kvs.LoadRequest{
-				Key: command[1],
-			}
-			loadItem(client, lr)
-		default:
-			fmt.Println("Invalid input!")
 		}
+
+		line, err = term.ReadLine()
+
 	}
+	term.Write([]byte(line))
 }
