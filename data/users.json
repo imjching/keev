@@ -2,11 +2,11 @@
   {
     "username": "admin",
     "password": "admin123",
-    "perms": ["USE", "GET", "PUT", "DELETE"]
+    "perms": ["ADMIN"]
   },
   {
     "username": "user",
     "password": "user123",
-    "perms": ["USE", "GET"]
+    "perms": []
   }
 ]

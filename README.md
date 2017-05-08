@@ -12,7 +12,7 @@ High-level overview:
                  └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
                                         ▲
                                         │
-                                        │ Google Protocol Buffers 
+                                        │ Google Protocol Buffers
                                         │
                                         ▼
                  ┌───────────────────────────────────────────────┐
@@ -37,3 +37,4 @@ Database current accepts the following commands:
 Restrictions:
 * Both `key` and `value` cannot contain spaces.
 * `key` cannot contain dots.
+* Only alphanumeric characters are allowed for `namespace`

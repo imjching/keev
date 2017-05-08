@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
@@ -135,20 +135,20 @@ func (s *Server) Get(ctx context.Context, in *pb.Key) (*pb.KeyValuePair, error) 
 	return &pb.KeyValuePair{Key: in.Key, Value: value.(string)}, nil
 }
 
-// TODO ========================================================================
-
 // Returns the total number of key-value pairs in a namespace
 func (s *Server) Count(ctx context.Context, in *google_protobuf.Empty) (*pb.CountResponse, error) {
 	token, err := verifyToken(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	newKey := token.Username + "." + token.Namespace
-	// TODO: get all the keys, retrieve all keys starting with newKey (inefficient)
-	// then get count
-	fmt.Println(newKey)
-	return nil, nil
+	newKey := token.Username + "." + token.Namespace + "."
+	count := 0
+	for _, i := range s.Data.Keys() {
+		if strings.HasPrefix(i, newKey) {
+			count += 1
+		}
+	}
+	return &pb.CountResponse{Count: int32(count)}, nil
 }
 
 // Retrieve all keys in a namespace
@@ -157,11 +157,14 @@ func (s *Server) ShowKeys(ctx context.Context, in *google_protobuf.Empty) (*pb.S
 	if err != nil {
 		return nil, err
 	}
-
-	newKey := token.Username + "." + token.Namespace
-	// TODO: get all the keys, retrieve all keys starting with newKey (inefficient)
-	fmt.Println(newKey)
-	return nil, nil
+	newKey := token.Username + "." + token.Namespace + "."
+	keys := make([]string, 0)
+	for _, i := range s.Data.Keys() {
+		if strings.HasPrefix(i, newKey) {
+			keys = append(keys, strings.Split(i, newKey)[1])
+		}
+	}
+	return &pb.ShowKeysResponse{Keys: keys}, nil
 }
 
 // Retrieve all key-value pairs in a namespace
@@ -170,24 +173,36 @@ func (s *Server) ShowData(ctx context.Context, in *google_protobuf.Empty) (*pb.S
 	if err != nil {
 		return nil, err
 	}
-
-	newKey := token.Username + "." + token.Namespace
-	// TODO: get all the keys, retrieve all key-value pairs starting with newKey (inefficient)
-	fmt.Println(newKey)
-	return nil, nil
+	newKey := token.Username + "." + token.Namespace + "."
+	kvps := make([]*pb.KeyValuePair, 0)
+	for i, v := range s.Data.Items() {
+		if strings.HasPrefix(i, newKey) {
+			kvps = append(kvps, &pb.KeyValuePair{Key: strings.Split(i, newKey)[1], Value: v.(string)})
+		}
+	}
+	return &pb.ShowDataResponse{Data: kvps}, nil
 }
 
 // Retrieve all namespaces in the key-value store that belongs to the user
 // NOTE: No token needed
 func (s *Server) ShowNamespaces(ctx context.Context, in *google_protobuf.Empty) (*pb.ShowNamespacesResponse, error) {
-	// TODO
-	return nil, nil
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, EmptyMetadataErr // should not occur
+	}
+	namespaces := make([]string, 0)
+	for _, i := range s.Data.Keys() {
+		split := strings.Split(i, ".")
+		if split[0] == md["username"][0] {
+			namespaces = append(namespaces, split[1])
+		}
+	}
+	return &pb.ShowNamespacesResponse{Namespaces: namespaces}, nil
 }
 
 // Changes the current namespace, returns a token that must be used for subsequent requests
 // NOTE: No token needed
 func (s *Server) UseNamespace(ctx context.Context, in *pb.Namespace) (*pb.NamespaceResponse, error) {
-	// TODO: Verify if user has permission to the namespace
 	// verifies that namespace is alphanumeric
 	re := regexp.MustCompile(`[a-zA-Z]`)
 	match := re.FindStringSubmatch(in.Namespace)
