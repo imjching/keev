@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -10,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/imjching/keev/auth"
 	"github.com/imjching/keev/protobuf"
@@ -24,14 +24,9 @@ const (
 	port = ":1234"
 )
 
-var (
-	AccessDeniedErr = errors.New("access denied")
+var users *auth.CredentialsStore
 
-// 	EmptyMetadataErr = errors.New("empty metadata")
-// 	EmptyTokenErr    = errors.New("empty token")
-// 	InvalidToken     = errors.New("invalid token")
-)
-
+// middleware
 func streamInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	if err := authorize(stream.Context()); err != nil {
 		return err
@@ -48,18 +43,15 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 
 func authorize(ctx context.Context) error {
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		fmt.Println(md)
-		if len(md["username"]) > 0 && md["username"][0] == "admin" &&
-			len(md["password"]) > 0 && md["password"][0] == "admin123" {
-			return nil
+		if len(md["username"]) == 0 || len(md["password"]) == 0 || !users.Check(md["username"][0], md["password"][0]) {
+			return AccessDeniedErr // should close client's socket instead...
 		}
-
-		return AccessDeniedErr
+		return nil
 	}
-
 	return EmptyMetadataErr
 }
 
+// for graceful shutdown
 func saveToDisk(server *Server, forced bool) {
 	b, err := json.Marshal(server)
 	err = ioutil.WriteFile("./data/data.json", b, 0644)
@@ -71,7 +63,7 @@ func saveToDisk(server *Server, forced bool) {
 			saveToDisk(server, true)
 		}
 	}
-	fmt.Println("Saved to disk")
+	log.Println("Saved to disk")
 }
 
 func main() {
@@ -86,24 +78,23 @@ func main() {
 		log.Fatalln("Unable to load cert", err)
 	}
 
+	// load and print users
 	file, err := os.Open("data/users.json")
 	if err != nil {
 		log.Fatalln("Unable to load users", err)
 	}
-
-	users := auth.NewCredentialsStore()
+	users = auth.NewCredentialsStore()
 	if err := users.Load(file); err != nil {
 		log.Fatalf("failed to load credentials: %s", err.Error())
 	}
+	fmt.Println("[USERS]:", users)
 
-	fmt.Println(users)
-
+	// register grpc server
 	s := grpc.NewServer(
 		grpc.Creds(cert),
 		grpc.StreamInterceptor(streamInterceptor),
 		grpc.UnaryInterceptor(unaryInterceptor),
 	)
-
 	server := NewServer()
 	protobuf.RegisterKVSServer(s, server)
 
@@ -116,17 +107,34 @@ func main() {
 		fmt.Println("No previous data found. Creating a new one...")
 	}
 
+	// save to disk every 5 minutes
+	ticker := time.NewTicker(5 * time.Minute)
+	quit := make(chan struct{})
+	go func(s *Server) {
+		for {
+			select {
+			case <-ticker.C:
+				saveToDisk(s, false)
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}(server)
+
 	// graceful shutdown
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	go func(s *Server) {
+	go func(q chan struct{}, s *Server) {
 		<-c
 		fmt.Println()
+		close(q)
 		saveToDisk(s, false)
 		os.Exit(1)
-	}(server)
+	}(quit, server)
 
+	// listen
 	log.Printf("Listening RPC Server on port localhost%s", port)
 	s.Serve(listener)
 }

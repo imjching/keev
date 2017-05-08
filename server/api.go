@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 
@@ -15,24 +14,14 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var (
-	KVPExistsErr        = errors.New("key already exists")
-	KVPMissingErr       = errors.New("key does not exist")
-	MissingTokenErr     = errors.New("missing token for namespace, use Use() to set a namespace")
-	InvalidTokenErr     = errors.New("invalid token for namespace, use Use() to set a namespace")
-	EmptyMetadataErr    = errors.New("missing metadata, please login again")
-	TokenSigningErr     = errors.New("unable to sign token")
-	InvalidNamespaceErr = errors.New("invalid namespace, alphanumerics only")
-)
+type Server struct {
+	Data cmap.ConcurrentMap `json:"data"`
+}
 
 type Token struct {
 	Username  string `json:"username"`
 	Namespace string `json:"database"`
 	jwt.StandardClaims
-}
-
-type Server struct {
-	Data cmap.ConcurrentMap `json:"data"`
 }
 
 func NewServer() *Server {
