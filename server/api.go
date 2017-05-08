@@ -190,14 +190,18 @@ func (s *Server) ShowNamespaces(ctx context.Context, in *google_protobuf.Empty) 
 	if !ok {
 		return nil, EmptyMetadataErr // should not occur
 	}
-	namespaces := make([]string, 0)
+	namespaces := make(map[string]bool, 0)
 	for _, i := range s.Data.Keys() {
 		split := strings.Split(i, ".")
 		if split[0] == md["username"][0] {
-			namespaces = append(namespaces, split[1])
+			namespaces[split[1]] = true
 		}
 	}
-	return &pb.ShowNamespacesResponse{Namespaces: namespaces}, nil
+	mapKeys := make([]string, len(namespaces))
+	for k := range namespaces {
+		mapKeys = append(mapKeys, k)
+	}
+	return &pb.ShowNamespacesResponse{Namespaces: mapKeys}, nil
 }
 
 // Changes the current namespace, returns a token that must be used for subsequent requests

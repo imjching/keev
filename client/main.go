@@ -52,21 +52,21 @@ func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []strin
 			fmt.Println("ERROR:  syntax error. use \"update [key] [value]\"")
 			break
 		}
-		fmt.Println("TODO")
+		Update(client, command[1], command[2])
 	case "has":
 		if len(command) != 2 {
 			// TODO: implement smart guessing?
 			fmt.Println("ERROR:  syntax error. use \"has [key]\"")
 			break
 		}
-		fmt.Println("TODO")
+		Has(client, command[1])
 	case "unset":
 		if len(command) != 2 {
 			// TODO: implement smart guessing?
 			fmt.Println("ERROR:  syntax error. use \"unset [key]\"")
 			break
 		}
-		fmt.Println("TODO")
+		Unset(client, command[1])
 	case "get":
 		if len(command) != 2 {
 			// TODO: implement smart guessing?
@@ -76,13 +76,13 @@ func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []strin
 		}
 		Get(client, command[1])
 	case "count":
-		fmt.Println("TODO")
+		Count(client)
 	case "show":
 		if len(command) != 2 {
 			fmt.Println("ERROR:  syntax error. use \"show [keys|data|namespaces]\"")
 			break
 		}
-		fmt.Println("TODO")
+		Show(client, command[1])
 	case "use":
 		if len(command) != 2 {
 			fmt.Println("ERROR:  syntax error. use \"use [namespace]\"")
