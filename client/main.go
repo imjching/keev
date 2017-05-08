@@ -11,35 +11,12 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
+	// "google.golang.org/grpc/metadata"
 )
 
 const (
 	address = "localhost:1234"
 )
-
-func storeItem(client pb.KVSClient, in *pb.StoreRequest) {
-
-	md := metadata.Pairs("authorization", "Bearer XXXX")
-	ctx := metadata.NewContext(context.Background(), md)
-
-	resp, err := client.StoreItem(ctx, in)
-	if err != nil {
-		log.Fatalf("Could not store item: %v", err)
-	}
-	if resp.Success {
-		log.Printf("A new item has been stored!")
-	}
-}
-
-func loadItem(client pb.KVSClient, in *pb.LoadRequest) {
-	resp, err := client.LoadItem(context.Background(), in)
-	if err != nil {
-		log.Printf("Could not load item: %v", err)
-		return
-	}
-	log.Printf("A new item has been loaded! %s:%s", resp.Key, resp.Value)
-}
 
 type loginCreds struct {
 	Username, Password string
@@ -56,8 +33,72 @@ func (c *loginCreds) RequireTransportSecurity() bool {
 	return true
 }
 
-func main() {
+func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []string) {
+	if len(command) == 0 {
+		fmt.Println("invalid!")
+		return
+	}
+	switch strings.ToLower(command[0]) {
+	case ".exit":
+		return
+	case "set":
+		if len(command) != 3 {
+			fmt.Println("ERROR:  syntax error. use \"put [key] [value]\"")
+			break
+		}
+		Set(client, command[1], command[2])
+	case "update":
+		if len(command) != 3 {
+			fmt.Println("ERROR:  syntax error. use \"update [key] [value]\"")
+			break
+		}
+		fmt.Println("TODO")
+	case "has":
+		if len(command) != 2 {
+			// TODO: implement smart guessing?
+			fmt.Println("ERROR:  syntax error. use \"has [key]\"")
+			break
+		}
+		fmt.Println("TODO")
+	case "unset":
+		if len(command) != 2 {
+			// TODO: implement smart guessing?
+			fmt.Println("ERROR:  syntax error. use \"unset [key]\"")
+			break
+		}
+		fmt.Println("TODO")
+	case "get":
+		if len(command) != 2 {
+			// TODO: implement smart guessing?
+			fmt.Println("ERROR:  syntax error. use \"get [key]\"")
+			// fmt.Println("ERROR:  key \"" + command[1] + "\" does not exist")
+			break
+		}
+		Get(client, command[1])
+	case "count":
+		fmt.Println("TODO")
+	case "show":
+		if len(command) != 2 {
+			fmt.Println("ERROR:  syntax error. use \"show [keys|data|namespaces]\"")
+			break
+		}
+		fmt.Println("TODO")
+	case "use":
+		if len(command) != 2 {
+			fmt.Println("ERROR:  syntax error. use \"use [namespace]\"")
+			// fmt.Println("ERROR:  namespace \"" + command[1] + "\" does not exist")
+			break
+		}
+		str := UseNamespace(client, command[1])
+		if str != "" {
+			term.SetPrompt("imjching@" + str + " > ")
+		}
+	default:
+		fmt.Println("ERROR:  syntax error at or near \"" + command[0] + "\"")
+	}
+}
 
+func main() {
 	creds, err := credentials.NewClientTLSFromFile("keys/cert.pem", "localhost")
 	if err != nil {
 		log.Fatalf("Failed to create TLS credentials %v", err)
@@ -98,37 +139,7 @@ func main() {
 		}
 
 		command := strings.Fields(line)
-		if len(command) == 0 {
-			fmt.Println("invalid!")
-		} else {
-			switch command[0] {
-			case ".exit":
-				return
-			case "put":
-				if len(command) != 3 {
-					fmt.Println("Invalid input: put <key> <value>")
-				} else {
-					sr := &pb.StoreRequest{
-						Key:   command[1],
-						Value: command[2],
-					}
-					storeItem(client, sr)
-				}
-			case "get":
-				if len(command) != 2 {
-					fmt.Println("Invalid input: get <key>")
-				} else {
-					lr := &pb.LoadRequest{
-						Key: command[1],
-					}
-					loadItem(client, lr)
-				}
-				term.SetPrompt("imjching@namespace > ")
-			default:
-				fmt.Println("Invalid input!")
-			}
-		}
-
+		handleCommand(client, term, command)
 		line, err = term.ReadLine()
 
 	}
