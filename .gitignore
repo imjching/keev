@@ -26,3 +26,4 @@ _testmain.go
 keys/cert.pem
 keys/key.pem
 data/data.json
+data/users.json
