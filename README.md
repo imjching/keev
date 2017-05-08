@@ -12,7 +12,8 @@ High-level overview:
                  └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
                                         ▲
                                         │
-                                        │ Google Protocol Buffers                                       │
+                                        │ Google Protocol Buffers 
+                                        │
                                         ▼
                  ┌───────────────────────────────────────────────┐
                  │                    gRPC                       │
