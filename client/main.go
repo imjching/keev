@@ -33,14 +33,14 @@ func (c *loginCreds) RequireTransportSecurity() bool {
 	return true
 }
 
-func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []string) {
+func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []string) bool {
 	if len(command) == 0 {
-		fmt.Println("invalid!")
-		return
+		fmt.Println("ERROR:  available options: set, update, has, unset, get, count, show, use")
+		return true
 	}
 	switch strings.ToLower(command[0]) {
 	case ".exit":
-		return
+		return false
 	case "set":
 		if len(command) != 3 {
 			fmt.Println("ERROR:  syntax error. use \"put [key] [value]\"")
@@ -96,6 +96,7 @@ func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []strin
 	default:
 		fmt.Println("ERROR:  syntax error at or near \"" + command[0] + "\"")
 	}
+	return true
 }
 
 func main() {
@@ -139,7 +140,9 @@ func main() {
 		}
 
 		command := strings.Fields(line)
-		handleCommand(client, term, command)
+		if !handleCommand(client, term, command) {
+			return
+		}
 		line, err = term.ReadLine()
 
 	}

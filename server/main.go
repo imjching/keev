@@ -1,11 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/imjching/keev/auth"
 	"github.com/imjching/keev/protobuf"
@@ -27,8 +31,6 @@ var (
 // 	EmptyTokenErr    = errors.New("empty token")
 // 	InvalidToken     = errors.New("invalid token")
 )
-
-var mySigningKey = []byte("AllYourBase")
 
 func streamInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	if err := authorize(stream.Context()); err != nil {
@@ -56,6 +58,20 @@ func authorize(ctx context.Context) error {
 	}
 
 	return EmptyMetadataErr
+}
+
+func saveToDisk(server *Server, forced bool) {
+	b, err := json.Marshal(server)
+	err = ioutil.WriteFile("./data/data.json", b, 0644)
+	if err != nil {
+		if forced {
+			fmt.Println("Data loss...")
+		} else {
+			fmt.Println("Failed to write to file...Trying again...")
+			saveToDisk(server, true)
+		}
+	}
+	fmt.Println("Saved to disk")
 }
 
 func main() {
@@ -88,7 +104,28 @@ func main() {
 		grpc.UnaryInterceptor(unaryInterceptor),
 	)
 
-	protobuf.RegisterKVSServer(s, NewServer())
+	server := NewServer()
+	protobuf.RegisterKVSServer(s, server)
+
+	// load data
+	data, err := ioutil.ReadFile("./data/data.json")
+	if err != nil {
+		fmt.Println("No previous data found. Creating a new one...")
+	}
+	if x := json.Unmarshal(data, server); x != nil {
+		fmt.Println("No previous data found. Creating a new one...")
+	}
+
+	// graceful shutdown
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func(s *Server) {
+		<-c
+		fmt.Println()
+		saveToDisk(s, false)
+		os.Exit(1)
+	}(server)
 
 	log.Printf("Listening RPC Server on port localhost%s", port)
 	s.Serve(listener)

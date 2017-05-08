@@ -7,9 +7,9 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
+	"github.com/imjching/keev/cmap"
 	"github.com/imjching/keev/common"
 	pb "github.com/imjching/keev/protobuf"
-	"github.com/orcaman/concurrent-map"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
@@ -32,12 +32,12 @@ type Token struct {
 }
 
 type Server struct {
-	data cmap.ConcurrentMap
+	Data cmap.ConcurrentMap `json:"data"`
 }
 
 func NewServer() *Server {
 	return &Server{
-		data: cmap.New(),
+		Data: cmap.New(),
 	}
 }
 
@@ -73,7 +73,7 @@ func (s *Server) Set(ctx context.Context, in *pb.KeyValuePair) (*pb.Response, er
 		return nil, err
 	}
 	newKey := token.Username + "." + token.Namespace + "." + in.Key
-	if !s.data.SetIfAbsent(newKey, in.Value) {
+	if !s.Data.SetIfAbsent(newKey, in.Value) {
 		return nil, KVPExistsErr
 	}
 	return &pb.Response{Success: true, Value: "(1 pair(s) affected)"}, nil
@@ -86,10 +86,10 @@ func (s *Server) Update(ctx context.Context, in *pb.KeyValuePair) (*pb.Response,
 		return nil, err
 	}
 	newKey := token.Username + "." + token.Namespace + "." + in.Key
-	if !s.data.Has(newKey) {
+	if !s.Data.Has(newKey) {
 		return nil, KVPMissingErr
 	}
-	s.data.Set(newKey, in.Value)
+	s.Data.Set(newKey, in.Value)
 	return &pb.Response{Success: true, Value: "(1 pair(s) affected)"}, nil
 }
 
@@ -100,7 +100,7 @@ func (s *Server) Has(ctx context.Context, in *pb.Key) (*pb.Response, error) {
 		return nil, err
 	}
 	newKey := token.Username + "." + token.Namespace + "." + in.Key
-	ok := s.data.Has(newKey)
+	ok := s.Data.Has(newKey)
 	if !ok {
 		return &pb.Response{Success: false, Value: "(0 pair(s) found)"}, nil
 	}
@@ -114,7 +114,7 @@ func (s *Server) Unset(ctx context.Context, in *pb.Key) (*pb.KeyValuePair, error
 		return nil, err
 	}
 	newKey := token.Username + "." + token.Namespace + "." + in.Key
-	value, ok := s.data.Pop(newKey)
+	value, ok := s.Data.Pop(newKey)
 	if !ok {
 		return nil, KVPMissingErr
 	}
@@ -128,7 +128,7 @@ func (s *Server) Get(ctx context.Context, in *pb.Key) (*pb.KeyValuePair, error) 
 		return nil, err
 	}
 	newKey := token.Username + "." + token.Namespace + "." + in.Key
-	value, ok := s.data.Get(newKey)
+	value, ok := s.Data.Get(newKey)
 	if !ok {
 		return nil, KVPMissingErr
 	}
