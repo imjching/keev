@@ -33,14 +33,33 @@ func (c *loginCreds) RequireTransportSecurity() bool {
 	return true
 }
 
+func printHelpMessage() {
+	fmt.Println(`Usage: COMMAND [command-specific-options]
+
+    set [key] [value]    # sets a key-value pair if not present
+    update [key] [value] # updates a key-value pair if present
+    has [key]            # determines if key is present
+    unset [key]          # remove key from store
+    get [key]            # retrieve key from store
+    count                # retrieve number of key-value pairs in store
+    show keys            # show all keys in store
+    show data            # show all key-value pairs in store
+    show namespaces      # show all namespaces in store
+    use [namespace]      # select a namespace
+	`)
+}
+
 func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []string) bool {
 	if len(command) == 0 {
-		fmt.Println("ERROR:  available options: set, update, has, unset, get, count, show, use")
+		printHelpMessage()
+		// fmt.Println("ERROR:  available options: set, update, has, unset, get, count, show, use")
 		return true
 	}
 	switch strings.ToLower(command[0]) {
 	case ".exit":
 		return false
+	case "help":
+		printHelpMessage()
 	case "set":
 		if len(command) != 3 {
 			fmt.Println("ERROR:  syntax error. use \"put [key] [value]\"")
@@ -71,7 +90,6 @@ func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []strin
 		if len(command) != 2 {
 			// TODO: implement smart guessing?
 			fmt.Println("ERROR:  syntax error. use \"get [key]\"")
-			// fmt.Println("ERROR:  key \"" + command[1] + "\" does not exist")
 			break
 		}
 		Get(client, command[1])
@@ -86,7 +104,6 @@ func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []strin
 	case "use":
 		if len(command) != 2 {
 			fmt.Println("ERROR:  syntax error. use \"use [namespace]\"")
-			// fmt.Println("ERROR:  namespace \"" + command[1] + "\" does not exist")
 			break
 		}
 		str := UseNamespace(client, command[1])
@@ -144,7 +161,6 @@ func main() {
 			return
 		}
 		line, err = term.ReadLine()
-
 	}
 	term.Write([]byte(line))
 }
