@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -11,12 +12,14 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	// "google.golang.org/grpc/metadata"
 )
 
 const (
 	address = "localhost:1234"
 )
+
+var username = flag.String("username", "", "Username")
+var password = flag.String("password", "", "Password")
 
 type loginCreds struct {
 	Username, Password string
@@ -108,7 +111,7 @@ func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []strin
 		}
 		str := UseNamespace(client, command[1])
 		if str != "" {
-			term.SetPrompt("imjching@" + str + " > ")
+			term.SetPrompt(*username + "@" + str + " > ")
 		}
 	default:
 		fmt.Println("ERROR:  syntax error at or near \"" + command[0] + "\"")
@@ -117,14 +120,19 @@ func handleCommand(client pb.KVSClient, term *terminal.Terminal, command []strin
 }
 
 func main() {
+	flag.Parse()
+	if *username == "" {
+		log.Fatalf("Please supply a username using the --username flag")
+	}
+
 	creds, err := credentials.NewClientTLSFromFile("keys/cert.pem", "localhost")
 	if err != nil {
 		log.Fatalf("Failed to create TLS credentials %v", err)
 	}
 
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(creds), grpc.WithPerRPCCredentials(&loginCreds{
-		Username: "admin",
-		Password: "admin123",
+		Username: *username,
+		Password: *password,
 	}))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
@@ -143,7 +151,7 @@ func main() {
 	fmt.Println("Type \"help\" for help.")
 	fmt.Println()
 
-	term.SetPrompt("imjching > ")
+	term.SetPrompt(*username + " > ")
 	line, err := term.ReadLine()
 	for {
 		if err == io.EOF {
