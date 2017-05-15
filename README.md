@@ -1,6 +1,6 @@
 ## keev
 
-keev is a simple key-value store build on top of hash tables using Go. Clients communicate with the server using gRPC and Google Protocol Buffers (protobufs). Data persist to disk and saving occurs every 5 minutes.
+keev is a simple key-value store built on top of hash tables using Go. Clients communicate with the server using gRPC and Google Protocol Buffers (protobufs). Data persist to disk and saving occurs every 5 minutes.
 
 ## Architecture
 
